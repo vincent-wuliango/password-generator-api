@@ -1,9 +1,8 @@
-package main
+package handler
 
 import (
 	"crypto/rand"
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -33,41 +32,31 @@ func generateSecurePassword(length int) (string, error) {
 }
 
 // 3. The "Waiter" (Handles the HTTP request)
-func generateHandler(w http.ResponseWriter, r *http.Request) {
-	// --- CORS HEADERS (Crucial!) ---
-	// This tells the browser: "It's okay to accept requests from any website"
+func Handler(w http.ResponseWriter, r *http.Request) {
+	// 1. CORS Headers
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET")
 	w.Header().Set("Content-Type", "application/json")
-	
-	// Parse the length from URL (e.g., ?length=20)
+
+	// 2. Parse Query
 	lengthStr := r.URL.Query().Get("length")
-	length := 12 // Default length
-	
+	length := 12
 	if lengthStr != "" {
 		if l, err := strconv.Atoi(lengthStr); err == nil && l > 0 && l <= 100 {
 			length = l
 		}
 	}
-	
-	// Cook the password
+
+	// 3. Generate
 	password, err := generateSecurePassword(length)
 	if err != nil {
 		http.Error(w, "Error generating password", http.StatusInternalServerError)
 		return
 	}
-	
-	// Serve the food (Send JSON)
+
+	// 4. Respond
 	json.NewEncoder(w).Encode(PasswordResponse{
 		Password: password,
 		Length:   length,
 	})
-}
-
-func main() {
-	// Define the route
-	http.HandleFunc("/generate", generateHandler)
-	
-	// Start the server
-	fmt.Println("🚀 Backend is running on http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
 }
