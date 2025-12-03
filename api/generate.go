@@ -14,14 +14,22 @@ type PasswordResponse struct {
 	Length   int    `json:"length"`
 }
 
-// The ingredients: secure characters
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+"
+const (
+	upperChars  = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	lowerChars  = "abcdefghijklmnopqrstuvwxyz"
+	numberChars = "0123456789"
+	symbolChars = "!@#$%^&*()_+~`|}{[]:;?><,./-="
+)
 
-// 2. The "Kitchen" (Logic to cook the password)
-func generateSecurePassword(length int) (string, error) {
+// The ingredients: secure characters
+func generateWithCharset(length int, charset string) (string, error) {
+	if charset == "" {
+		// Safety net: If ingredients are empty, use everything
+		charset = upperChars + lowerChars + numberChars + symbolChars
+	}
+
 	result := make([]byte, length)
 	for i := range result {
-		// Securely pick a random index
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
 		if err != nil {
 			return "", err
@@ -31,14 +39,13 @@ func generateSecurePassword(length int) (string, error) {
 	return string(result), nil
 }
 
-// 3. The "Waiter" (Handles the HTTP request)
 func Handler(w http.ResponseWriter, r *http.Request) {
-	// 1. CORS Headers
+	// CORS Headers
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET")
 	w.Header().Set("Content-Type", "application/json")
 
-	// 2. Parse Query
+	// 2. Parse Length
 	lengthStr := r.URL.Query().Get("length")
 	length := 12
 	if lengthStr != "" {
@@ -47,14 +54,34 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 3. Generate
-	password, err := generateSecurePassword(length)
+	// 3. Parse Filters (Dynamic Ingredients)
+	// We build the 'validChars' string based on query params
+	var validChars string
+
+	if r.URL.Query().Get("upper") == "true" {
+		validChars += upperChars
+	}
+	if r.URL.Query().Get("lower") == "true" {
+		validChars += lowerChars
+	}
+	if r.URL.Query().Get("number") == "true" {
+		validChars += numberChars
+	}
+	if r.URL.Query().Get("symbol") == "true" {
+		validChars += symbolChars
+	}
+
+	// Note: 'Ambiguous' logic is usually handled on frontend for display,
+	// but can be added here if needed. For now, we stick to basic filters.
+
+	// 4. Generate
+	password, err := generateWithCharset(length, validChars)
 	if err != nil {
 		http.Error(w, "Error generating password", http.StatusInternalServerError)
 		return
 	}
 
-	// 4. Respond
+	// 5. Respond
 	json.NewEncoder(w).Encode(PasswordResponse{
 		Password: password,
 		Length:   length,
