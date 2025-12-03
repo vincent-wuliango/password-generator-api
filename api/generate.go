@@ -23,11 +23,6 @@ const (
 
 // The ingredients: secure characters
 func generateWithCharset(length int, charset string) (string, error) {
-	if charset == "" {
-		// Safety net: If ingredients are empty, use everything
-		charset = upperChars + lowerChars + numberChars + symbolChars
-	}
-
 	result := make([]byte, length)
 	for i := range result {
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
